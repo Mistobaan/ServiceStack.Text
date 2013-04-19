@@ -170,6 +170,7 @@
     <Compile Include="BclStructTests.cs" />
     <Compile Include="CsvTests\DictionaryTests.cs" />
     <Compile Include="CyclicalDependencyTests.cs" />
+    <Compile Include="DateTimeExtensionsTests.cs" />
     <Compile Include="DynamicModels\GoogleMapsApiTests.cs" />
     <Compile Include="DateTimeOffsetAndTimeSpanTests.cs" />
     <Compile Include="DynamicModels\ModelWithComplexTypes.cs" />
@@ -188,6 +189,7 @@
     <Compile Include="JsonTests\DictionaryTests.cs" />
     <Compile Include="JsonTests\IDictionarySerializationTests.cs" />
     <Compile Include="JsonTests\StringParsingTests.cs" />
+    <Compile Include="JsonTests\PublicFieldTest.cs" />
     <Compile Include="JsvTests\GeneratedJsvTests.cs" />
     <Compile Include="JsvTests\InheritanceTests.cs" />
     <Compile Include="JsonTests\JsonArrayObjectTests.cs" />

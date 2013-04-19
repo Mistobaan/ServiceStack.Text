@@ -67,10 +67,14 @@ namespace ServiceStack.Text
         public Func<Type, string> TypeWriter { get; set; }
         public Func<string, Type> TypeFinder { get; set; }
         public JsonDateHandler? DateHandler { get; set; }
+        public JsonTimeSpanHandler? TimeSpanHandler { get; set; }
         public bool? EmitCamelCaseNames { get; set; }
         public bool? EmitLowercaseUnderscoreNames { get; set; }
         public bool? ThrowOnDeserializationError { get; set; }
         public bool? AlwaysUseUtc { get; set; }
+        public bool? EscapeUnicode { get; set; }
         public bool? PreferInterfaces { get; set; }
+        public bool? IncludePublicFields { get; set; }
+        public EmptyCtorFactoryDelegate ModelFactory { get; set; }
     }
 }

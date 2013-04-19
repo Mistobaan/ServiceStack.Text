@@ -13,6 +13,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
 using ServiceStack.Text.Common;
@@ -38,9 +39,9 @@ namespace ServiceStack.Text.Json
 				if (WriteFnCache.TryGetValue(type, out writeFn)) return writeFn;
 
 				var genericType = typeof(JsonWriter<>).MakeGenericType(type);
-				var mi = genericType.GetMethod("WriteFn", BindingFlags.Public | BindingFlags.Static);
-				var writeFactoryFn = (Func<WriteObjectDelegate>)Delegate.CreateDelegate(typeof(Func<WriteObjectDelegate>), mi);
-				writeFn = writeFactoryFn();
+                var mi = genericType.GetPublicStaticMethod("WriteFn");
+                var writeFactoryFn = (Func<WriteObjectDelegate>)mi.MakeDelegate(typeof(Func<WriteObjectDelegate>));
+                writeFn = writeFactoryFn();
 
 				Dictionary<Type, WriteObjectDelegate> snapshot, newCache;
 				do
@@ -71,9 +72,9 @@ namespace ServiceStack.Text.Json
 				if (JsonTypeInfoCache.TryGetValue(type, out writeFn)) return writeFn;
 
 				var genericType = typeof(JsonWriter<>).MakeGenericType(type);
-				var mi = genericType.GetMethod("GetTypeInfo", BindingFlags.Public | BindingFlags.Static);
-				var writeFactoryFn = (Func<TypeInfo>)Delegate.CreateDelegate(typeof(Func<TypeInfo>), mi);
-				writeFn = writeFactoryFn();
+                var mi = genericType.GetPublicStaticMethod("GetTypeInfo");
+                var writeFactoryFn = (Func<TypeInfo>)mi.MakeDelegate(typeof(Func<TypeInfo>));
+                writeFn = writeFactoryFn();
 
 				Dictionary<Type, TypeInfo> snapshot, newCache;
 				do

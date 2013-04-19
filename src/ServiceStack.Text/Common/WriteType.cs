@@ -11,6 +11,7 @@
 //
 
 using System;
+using System.Collections;
 using System.IO;
 using System.Reflection;
 using ServiceStack.Text.Json;
@@ -51,10 +52,11 @@ namespace ServiceStack.Text.Common
             {
                 WriteTypeInfo = TypeInfoWriter;
             }
-            if (typeof(T).IsAbstract)
+
+            if (typeof(T).IsAbstract())
             {
                 WriteTypeInfo = TypeInfoWriter;
-                if (!JsConfig.PreferInterfaces || !typeof(T).IsInterface)
+                if (!JsConfig.PreferInterfaces || !typeof(T).IsInterface())
                 {
                     CacheFn = WriteAbstractProperties;
                 }
@@ -100,13 +102,15 @@ namespace ServiceStack.Text.Common
 
         private static bool Init()
         {
-            if (!typeof(T).IsClass && !typeof(T).IsInterface && !JsConfig.TreatAsRefType(typeof(T))) return false;
+            if (!typeof(T).IsClass() && !typeof(T).IsInterface() && !JsConfig.TreatAsRefType(typeof(T))) return false;
 
             var propertyInfos = TypeConfig<T>.Properties;
+            var fieldInfos = JsConfig.IncludePublicFields ? TypeConfig<T>.Fields : new FieldInfo[0];
             var propertyNamesLength = propertyInfos.Length;
-            PropertyWriters = new TypePropertyWriter[propertyNamesLength];
+            var fieldNamesLength = fieldInfos.Length;
+            PropertyWriters = new TypePropertyWriter[propertyNamesLength + fieldNamesLength];
 
-            if (propertyNamesLength == 0 && !JsState.IsWritingDynamic)
+            if (propertyNamesLength + fieldNamesLength == 0 && !JsState.IsWritingDynamic)
             {
                 return typeof(T).IsDto();
             }
@@ -138,7 +142,7 @@ namespace ServiceStack.Text.Common
                 }
 
                 var propertyType = propertyInfo.PropertyType;
-                var suppressDefaultValue = propertyType.IsValueType && JsConfig.HasSerializeFn.Contains(propertyType)
+                var suppressDefaultValue = propertyType.IsValueType() && JsConfig.HasSerializeFn.Contains(propertyType)
                     ? propertyType.GetDefaultValue()
                     : null;
 
@@ -164,6 +168,30 @@ namespace ServiceStack.Text.Common
                 );
             }
 
+            for (var i = 0; i < fieldNamesLength; i++)
+            {
+                var fieldInfo = fieldInfos[i];
+
+                string propertyName = fieldInfo.Name;
+                string propertyNameCLSFriendly = propertyName.ToCamelCase();
+                string propertyNameLowercaseUnderscore = propertyName.ToLowercaseUnderscore();
+
+                var propertyType = fieldInfo.FieldType;
+                var suppressDefaultValue = propertyType.IsValueType() && JsConfig.HasSerializeFn.Contains(propertyType)
+                    ? propertyType.GetDefaultValue()
+                    : null;
+
+                PropertyWriters[i + propertyNamesLength] = new TypePropertyWriter
+                (
+                    propertyName,
+                    propertyNameCLSFriendly,
+                    propertyNameLowercaseUnderscore,
+                    fieldInfo.GetValueGetter<T>(),
+                    Serializer.GetWriteFn(propertyType),
+                    suppressDefaultValue
+                );
+            }
+
             return true;
         }
 
@@ -173,9 +201,9 @@ namespace ServiceStack.Text.Common
             {
                 get
                 {
-                    return (JsConfig.EmitCamelCaseNames)
+                    return (JsConfig<T>.EmitCamelCaseNames || JsConfig.EmitCamelCaseNames)
                         ? propertyNameCLSFriendly
-                        : (JsConfig.EmitLowercaseUnderscoreNames)
+                        : (JsConfig<T>.EmitLowercaseUnderscoreNames || JsConfig.EmitLowercaseUnderscoreNames)
                             ? propertyNameLowercaseUnderscore
                             : propertyName;
                 }
@@ -227,7 +255,7 @@ namespace ServiceStack.Text.Common
                 return;
             }
             var valueType = value.GetType();
-            if (valueType.IsAbstract)
+            if (valueType.IsAbstract())
             {
                 WriteProperties(writer, value);
                 return;
@@ -301,7 +329,7 @@ namespace ServiceStack.Text.Common
                 var i = 0;
                 foreach (var propertyWriter in PropertyWriters)
                 {
-                    var propertyValue = propertyWriter.GetterFn((T) value);
+                    var propertyValue = propertyWriter.GetterFn((T)value);
                     if (propertyValue == null) continue;
 
                     if (i++ > 0)

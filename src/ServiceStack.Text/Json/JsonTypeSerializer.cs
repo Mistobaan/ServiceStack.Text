@@ -176,7 +176,7 @@ namespace ServiceStack.Text.Json
             if (charValue == null)
                 writer.Write(JsonUtils.Null);
             else
-                WriteRawString(writer, ((char)charValue).ToString(CultureInfo.InvariantCulture));
+                WriteRawString(writer, ((char)charValue).ToString());
         }
 
         public void WriteByte(TextWriter writer, object byteValue)
@@ -322,9 +322,8 @@ namespace ServiceStack.Text.Json
             return string.IsNullOrEmpty(value) ? value : ParseRawString(value);
         }
 
-        internal static bool IsEmptyMap(string value)
+        internal static bool IsEmptyMap(string value, int i = 1)
         {
-            var i = 1;
             for (; i < value.Length; i++) { var c = value[i]; if (c >= WhiteSpaceFlags.Length || !WhiteSpaceFlags[c]) break; } //Whitespace inline
             if (value.Length == i) return true;
             return value[i++] == JsWriter.MapEndChar;
@@ -433,7 +432,41 @@ namespace ServiceStack.Text.Json
 
         public string EatMapKey(string value, ref int i)
         {
-            return ParseJsonString(value, ref i);
+            var valueLength = value.Length;
+            for (; i < value.Length; i++) { var c = value[i]; if (c >= WhiteSpaceFlags.Length || !WhiteSpaceFlags[c]) break; } //Whitespace inline
+
+            var tokenStartPos = i;
+            var valueChar = value[i];
+            var withinQuotes = false;
+            var endsToEat = 1;
+
+            switch (valueChar)
+            {
+                //If we are at the end, return.
+                case JsWriter.ItemSeperator:
+                case JsWriter.MapEndChar:
+                    return null;
+
+                //Is Within Quotes, i.e. "..."
+                case JsWriter.QuoteChar:
+                    return ParseString(value, ref i);
+            }
+            
+            //Is Value
+            while (++i < valueLength)
+            {
+                valueChar = value[i];
+
+                if (valueChar == JsWriter.ItemSeperator
+                    //If it doesn't have quotes it's either a keyword or number so also has a ws boundary
+                    || (valueChar < WhiteSpaceFlags.Length && WhiteSpaceFlags[valueChar])
+                )
+                {
+                    break;
+                }
+            }
+
+            return value.Substring(tokenStartPos, i - tokenStartPos);
         }
 
         public bool EatMapKeySeperator(string value, ref int i)
