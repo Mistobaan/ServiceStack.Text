@@ -179,11 +179,15 @@ namespace ServiceStack.Text.Common
 
             var valueCollection = (IEnumerable)oValueCollection;
             var ranOnce = false;
-            foreach (var valueItem in valueCollection)
-            {
-                if (toStringFn == null)
-                    toStringFn = Serializer.GetWriteFn(valueItem.GetType());
-
+            Type lastItemType = null;
+			foreach (var valueItem in valueCollection)
+			{
+			    var itemType = valueItem.GetType();
+			    if ((toStringFn == null) || lastItemType != itemType)
+			    {
+			        toStringFn = Serializer.GetWriteFn(itemType);
+			        lastItemType = itemType;
+			    }
                 JsWriter.WriteItemSeperatorIfRanOnce(writer, ref ranOnce);
 
                 toStringFn(writer, valueItem);
