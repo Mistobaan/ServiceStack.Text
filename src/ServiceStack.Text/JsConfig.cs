@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using System.Threading;
 using ServiceStack.Text.Common;
 using ServiceStack.Text.Json;
 using ServiceStack.Text.Jsv;
@@ -716,12 +717,21 @@ namespace ServiceStack.Text
 #endif
 
 
-        internal static IDictionary<Type, WriteObjectDelegate> writeFnCache = new Dictionary<Type, WriteObjectDelegate>();
+        internal static Dictionary<Type, WriteObjectDelegate> writeFnCache = new Dictionary<Type, WriteObjectDelegate>();
         internal static HashSet<Type> AllTypesUsed = new HashSet<Type>();
 
         internal static bool RemoveCacheFn(Type cachedType)
         {
-            return writeFnCache.Remove(cachedType);
+            bool result = false;
+            Dictionary<Type, WriteObjectDelegate> snapshot, newCache;
+            do
+            {
+                snapshot = writeFnCache;
+                result = snapshot.Remove(cachedType);
+                newCache = new Dictionary<Type, WriteObjectDelegate>(writeFnCache);
+            } while (!ReferenceEquals(
+                Interlocked.CompareExchange(ref writeFnCache, newCache, snapshot), snapshot));
+            return result;
         }
 
         internal static void ClearRawSerializeFn(Type propertyType)
@@ -737,9 +747,9 @@ namespace ServiceStack.Text
 
         internal static WriteObjectDelegate GetWriteFn<TSerializer>(Type propertyType) where TSerializer : ITypeSerializer
         {
-            if (writeFnCache.ContainsKey(propertyType)) return writeFnCache[propertyType];
-
             WriteObjectDelegate writeFn;
+            if (writeFnCache.TryGetValue(propertyType, out writeFn)) return writeFn;
+
             Type typeofClassWithGenericStaticMethod = typeof (JsConfig<>);
             Type[] args = new[] {propertyType};
             Type genericType = typeofClassWithGenericStaticMethod.MakeGenericType(args);
@@ -747,9 +757,16 @@ namespace ServiceStack.Text
                 .GetMethod("WriteFn", BindingFlags.Static | BindingFlags.Public);
             MethodInfo generic = methodInfo.MakeGenericMethod(typeof (TSerializer));
             writeFn = (WriteObjectDelegate) Delegate.CreateDelegate(typeof (WriteObjectDelegate), generic);
-            
-            writeFnCache.Add(propertyType, writeFn);
 
+            Dictionary<Type, WriteObjectDelegate> snapshot, newCache;
+            do
+            {
+                snapshot = writeFnCache;
+                newCache = new Dictionary<Type, WriteObjectDelegate>(writeFnCache);
+                newCache[propertyType] = writeFn;
+
+            } while (!ReferenceEquals(
+                Interlocked.CompareExchange(ref writeFnCache, newCache, snapshot), snapshot));
             return writeFn;
         }
     }
