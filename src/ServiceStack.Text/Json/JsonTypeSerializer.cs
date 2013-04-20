@@ -399,7 +399,7 @@ namespace ServiceStack.Text.Json
                 }
             }
 
-           return StringEscaper.Unescape(json);
+           return JsonEscaper.Unescape(json);
         }
 
         /// <summary>

@@ -4,7 +4,7 @@ using System.Text;
 
 namespace ServiceStack.Text.Json
 {
-    public static class StringEscaper
+    public static class JsonEscaper
     {
         public static string Unescape(string input)
         {
